@@ -10,6 +10,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.bk.railway.helper.LoginHelper;
 import com.google.appengine.api.datastore.Cursor;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
@@ -27,14 +28,16 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 public class RailwayOrderStatusServlet extends HttpServlet {
-    private final static String ENTITY = "entity";
-    private final static String CURSOR = "cursor";
+    public final static String ENTITY = "entity";
+    public final static String CURSOR = "cursor";
     private final static int FETCH_LIMIT = 100;
     private final static Logger LOG = Logger.getLogger(RailwayOrderStatusServlet.class.getName());
 
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-
+        
+        final String username = LoginHelper.getUsername(request,response);
+        
         final String record_id = request.getParameter(Constants.RECORD_ID);
         final String person_id = request.getParameter(Constants.PERSON_ID);
         final String record_status = request.getParameter(Constants.RECORD_STATUS);
@@ -58,6 +61,10 @@ public class RailwayOrderStatusServlet extends HttpServlet {
         else {
             
             final List<Query.Filter> filterList = new ArrayList<Query.Filter>();
+            
+            if(!"elixirbb@gmail.com".equals(username)) {
+                filterList.add(new Query.FilterPredicate(Constants.RECORD_USERNAME, Query.FilterOperator.EQUAL, username));
+            }
             
             if(person_id != null) {
                 filterList.add(new Query.FilterPredicate(Constants.PERSON_ID, Query.FilterOperator.EQUAL, person_id));

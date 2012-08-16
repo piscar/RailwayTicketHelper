@@ -4,10 +4,6 @@
 		<servlet-class>com.bk.railway.servlet.RailwayOrderServlet</servlet-class>
 	</servlet>
 	<servlet>
-		<servlet-name>RailwayWriteRecordServlet</servlet-name>
-		<servlet-class>com.bk.railway.servlet.RailwayWriteRecordServlet</servlet-class>
-	</servlet>
-	<servlet>
 		<servlet-name>RailwayCancelRecordServlet</servlet-name>
 		<servlet-class>com.bk.railway.servlet.RailwayCancelRecordServlet</servlet-class>
 	</servlet>
@@ -28,10 +24,6 @@
 		<url-pattern>/send</url-pattern>
 	</servlet-mapping>
 	<servlet-mapping>
-		<servlet-name>RailwayWriteRecordServlet</servlet-name>
-		<url-pattern>/write</url-pattern>
-	</servlet-mapping>
-	<servlet-mapping>
 		<servlet-name>RailwayCancelRecordServlet</servlet-name>
 		<url-pattern>/cancel</url-pattern>
 	</servlet-mapping>
@@ -39,9 +31,9 @@
 		<servlet-name>RailwayOrderStatusServlet</servlet-name>
 		<url-pattern>/status</url-pattern>
 	</servlet-mapping>	
-	<welcome-file-list>
-		<welcome-file>index.html</welcome-file>
-	</welcome-file-list>
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
  <servlet>
   <servlet-name>SystemServiceServlet</servlet-name>
   <servlet-class>com.google.api.server.spi.SystemServiceServlet</servlet-class>

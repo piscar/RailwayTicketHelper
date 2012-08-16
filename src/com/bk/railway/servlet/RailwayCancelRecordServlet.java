@@ -55,10 +55,12 @@ public class RailwayCancelRecordServlet extends HttpServlet {
 
         final String person_id = (String) record.getProperty(Constants.PERSON_ID);
         final String order_no = (String) record.getProperty(Constants.ORDER_NO);
+        final String orderTaskName = (String) record.getProperty(Constants.ORDER_TASKNAME);
+        
         final RecordStatus record_status = RecordStatus.fromObject(record.getProperty(Constants.RECORD_STATUS));
         
-        if(RecordStatus.QUEUE == record_status || RecordStatus.POSTPONED == record_status) {
-            final boolean delTaskSucess = QueueFactory.getDefaultQueue().deleteTask(recordid);
+        if(orderTaskName != null && (RecordStatus.QUEUE == record_status || RecordStatus.POSTPONED == record_status)) {
+            final boolean delTaskSucess = QueueFactory.getDefaultQueue().deleteTask(orderTaskName);
             if(!delTaskSucess) {
                 LOG.warning("delTaskSucess=" + delTaskSucess);
             }
@@ -83,6 +85,9 @@ public class RailwayCancelRecordServlet extends HttpServlet {
         if(success) {
             final Map<String,String> databaseProperties = new HashMap<String,String>();
             databaseProperties.put(Constants.RECORD_STATUS, RecordStatus.CANCELED.toString());
+            databaseProperties.remove(Constants.ORDER_TASKNAME);
+            databaseProperties.remove(Constants.ORDER_TASKETA);
+            
             DataStoreHelper.storeWithRetry(100, recordKey, databaseProperties);
         }
 

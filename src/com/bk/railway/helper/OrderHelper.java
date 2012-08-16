@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.HashMap;
@@ -14,10 +16,13 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.bk.railway.servlet.Constants;
+
 public class OrderHelper {
-    
+    public final static String ORDER_KEYWORD = new String("é›»è…¦ä»£ç¢¼ï¼š");
     private final static Logger LOG = Logger.getLogger(OrderHelper.class.getName());
     private final static String USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_4) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11";
+    private final static int CONRENT_HARDLIMIT = 10240;
     
     public static class OrderRequest {
         public final String person_id;
@@ -70,19 +75,25 @@ public class OrderHelper {
     }
     
     private final OrderRequest m_orderRequest;
-    
     public OrderHelper(OrderRequest request) {
         m_orderRequest = request;
     }
     
     
-    public OrderResponse doOrder() throws Exception {
-        
-        final Map<String,String> cookies = getCookies(m_orderRequest.formData);
+    public OrderResponse doOrder(StringBuffer contentBuffer) throws Exception {
+        final StringBuffer nextActionStringBuffer = new StringBuffer();
+        final Map<String,String> cookies = getCookies(m_orderRequest.formData,nextActionStringBuffer);
+        final String nextActionString = nextActionStringBuffer.toString();
         
         LOG.log(Level.INFO,"cookies=" + cookies);
         
         if(null == cookies || cookies.isEmpty()) {
+            return null;
+        }
+        
+        LOG.log(Level.INFO,"nextActionString=" + nextActionString);
+        
+        if(null == nextActionString || "".equals(nextActionString)) {
             return null;
         }
         
@@ -98,7 +109,7 @@ public class OrderHelper {
         
         m_orderRequest.formData.put("randInput", answer);
         
-        final String ticketno = bookTicket(m_orderRequest.formData,cookies);
+        final String ticketno = bookTicket(m_orderRequest.formData,cookies,contentBuffer,nextActionString);
         LOG.info("person_id=" + m_orderRequest.person_id + " ticketno=" + ticketno);
         
         if(null == ticketno || "".equals(ticketno)) {
@@ -109,12 +120,13 @@ public class OrderHelper {
         return new OrderResponse(m_orderRequest.person_id,ticketno);
     }
     
-    private String bookTicket(Map<String,String> formData,Map<String,String> cookies) throws Exception{
+    private String bookTicket(Map<String,String> formData,Map<String,String> cookies,StringBuffer contentBuffer,String nextActionString) throws Exception{
+        
         final Pattern pattern = Pattern.compile("(\\d{5,7})");
        
-        final String jsessionid = NetworkUtil.getJSESSIONID(cookies);
+        //final String jsessionid = NetworkUtil.getJSESSIONID(cookies);
         final String sgetData = "?" + NetworkUtil.toPostData(formData);
-        final String url = "http://railway.hinet.net/order_no1.jsp;jsessionid=" + jsessionid + sgetData;
+        final String url = "http://railway.hinet.net/" + nextActionString + sgetData;
         
         String ticketno = null;
         
@@ -128,23 +140,29 @@ public class OrderHelper {
         conn.setDoInput(true);
         conn.connect();
         
-        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(),Constants.WEB_ENCODING));
         String line = null;
-        
+
         do {
             
             line = br.readLine();
             if(line != null) {
-                System.out.println(">>>" + line);
-                int startpos = line.indexOf("¹q¸£¥N½X¡G");
+                if(contentBuffer != null && contentBuffer.length() + line.length() < CONRENT_HARDLIMIT) {
+                    contentBuffer.append(line).append("\n");
+                }
+                LOG.info(line);
+                int startpos = line.indexOf(ORDER_KEYWORD);
                 if(startpos > 0) {
-                    final Matcher matcher = pattern.matcher(line.substring(startpos + "¹q¸£¥N½X¡G".length()));
+                    final Matcher matcher = pattern.matcher(line.substring(startpos + ORDER_KEYWORD.length()));
                     if(matcher.find()) {
                         ticketno = matcher.group(1);
                     }
                 }
             }
         }while(line != null);
+        
+        //debugOut.flush();
+        //debugOut.close();
         
         conn.getInputStream().close();
         
@@ -159,7 +177,7 @@ public class OrderHelper {
         
         final URLConnection conn = new URL(url).openConnection();
         
-        final URL hostCaptchaURL = new URL("http://localhost:8016/servlets/handle");
+        final URL hostCaptchaURL = new URL("http://ec2-46-137-229-229.ap-southeast-1.compute.amazonaws.com:8016/servlets/handle");
         LOG.info("resolveRandom hostCaptchaURL=" + hostCaptchaURL);
         
         final URLConnection hostCaptchaConn = hostCaptchaURL.openConnection();
@@ -208,8 +226,9 @@ public class OrderHelper {
       
     }
     
-    private Map<String,String> getCookies(Map<String,String> formData) throws Exception {
+    private Map<String,String> getCookies(Map<String,String> formData,StringBuffer nextActionStringBuffer) throws Exception {
         final Map<String,String> cookies = new HashMap<String,String>();
+        final Pattern actionPattern = Pattern.compile("action=\"(\\S+)\"");
         final String formDataEncodedString = NetworkUtil.toPostData(formData);
         LOG.log(Level.INFO, "formDataEncodedString=" + formDataEncodedString);
         
@@ -251,14 +270,17 @@ public class OrderHelper {
                 }
             }
             
-            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(),Constants.WEB_ENCODING));
             String line = null;
             
             do {
                 
                 line = br.readLine();
                 if(line != null) {
-                    //LOG.log(Level.INFO,">>>" + line);
+                    final Matcher matcher = actionPattern.matcher(line);
+                    if(matcher.find()) {
+                        nextActionStringBuffer.append(matcher.group(1));
+                    }
                 }
             }while(line != null);
             

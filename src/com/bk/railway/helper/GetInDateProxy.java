@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 public class GetInDateProxy {
     private final static Logger LOG = Logger.getLogger(GetInDateProxy.class.getName());
     private final static SimpleDateFormat DATEFORMAT = new SimpleDateFormat("yyyy/MM/dd");
+    private final static SimpleDateFormat WEB_DATEFORMAT = new SimpleDateFormat("yyyy/MM/dd EEE");
     private static GetInDateProxy m_self;
     
     public synchronized static GetInDateProxy newInstance() {
@@ -35,15 +36,45 @@ public class GetInDateProxy {
     private int m_updateMonth;
     private int m_updateDay;
     
+    public static String bookablePlusDay(String shortDateString,int plusDay) {
+        try {
+            Calendar cal  = Calendar.getInstance(TaskUtil.TIMEZONE);
+            cal.setTimeInMillis(DATEFORMAT.parse(shortDateString).getTime());
+            if(plusDay != 0) {
+                cal.add(Calendar.DAY_OF_MONTH, plusDay);
+            }
+            return DATEFORMAT.format(cal.getTime());
+        } catch (ParseException e) {
+            return shortDateString;
+        }        
+    }
+   
+    public static String bookableAppendWeek(String shortDateString,int plusDay) {
+        try {
+            Calendar cal  = Calendar.getInstance(TaskUtil.TIMEZONE);
+            cal.setTimeInMillis(DATEFORMAT.parse(shortDateString).getTime());
+            if(plusDay != 0) {
+                cal.add(Calendar.DAY_OF_MONTH, plusDay);
+            }
+            return WEB_DATEFORMAT.format(cal.getTime());
+        } catch (ParseException e) {
+            return shortDateString;
+        }
+    }
     
     public static String bookableStringToDate(String bookableString) {
-        return bookableString.substring(0,10);
+        if(bookableString.length() <= 10) {
+            return bookableString;
+        }
+        else {
+            return bookableString.substring(0,10);
+        }
     }
     
     public static boolean isBeforeToday(String bookableString) throws ParseException {
         final Date bookDate = DATEFORMAT.parse(bookableStringToDate(bookableString));
-        final Calendar tomorrow = Calendar.getInstance(Locale.TAIWAN);
-        final Calendar bookDay = Calendar.getInstance(Locale.TAIWAN);
+        final Calendar tomorrow = Calendar.getInstance(TaskUtil.TIMEZONE);
+        final Calendar bookDay = Calendar.getInstance(TaskUtil.TIMEZONE);
         
         tomorrow.add(Calendar.DAY_OF_MONTH, 1);
         tomorrow.set(Calendar.HOUR_OF_DAY, 0);
@@ -74,8 +105,8 @@ public class GetInDateProxy {
 
     public synchronized String[] getAllBookableDate() throws Exception {
         
-        final Calendar currentCalendar = Calendar.getInstance();
-        currentCalendar.set(Calendar.ZONE_OFFSET, 8);
+        final Calendar currentCalendar = Calendar.getInstance(TaskUtil.TIMEZONE);
+
         final int year = currentCalendar.get(Calendar.YEAR);
         final int month = currentCalendar.get(Calendar.MONTH);
         final int day = currentCalendar.get(Calendar.DAY_OF_MONTH);
@@ -84,6 +115,8 @@ public class GetInDateProxy {
             m_updateDay = day;
             m_updateMonth = month;
             m_updateYear = year;
+            
+            m_bookableList.clear();
             
             for(String dateString : findAllowBookedDate()) {
                 m_bookableList.put(dateString.substring(0,10), dateString);
@@ -111,7 +144,7 @@ public class GetInDateProxy {
         conn.setDoOutput(true);
         conn.connect();
         
-        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(),"UTF8"));
         String line = null;
         
         do {

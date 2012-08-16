@@ -1,13 +1,7 @@
 <queue-entries>
-<!--Change the refresh rate of the default queue to 1/s-->
   <queue>
-    <name>database</name>
-    <rate>1/s</rate>
+    <name>default</name>
     <max-concurrent-requests>1</max-concurrent-requests>
-  </queue>
-    <queue>
-    <name>order</name>
-    <rate>60/s</rate>
-    <max-concurrent-requests>10</max-concurrent-requests>
+    <rate>1/s</rate>
   </queue>
 </queue-entries>

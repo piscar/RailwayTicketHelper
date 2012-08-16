@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.bk.railway.helper.DataStoreHelper;
 import com.bk.railway.helper.GetInDateProxy;
+import com.bk.railway.helper.LoginHelper;
 import com.bk.railway.helper.OrderHelper;
 import com.bk.railway.helper.TaskUtil;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
@@ -30,7 +31,9 @@ public class RailwaySendOrderServlet extends HttpServlet {
 
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-
+        
+        final String username = LoginHelper.getUsername(request,response);
+        
         try {
             
             final String bookableDateString = GetInDateProxy.newInstance().getBookableString(request.getParameter(Constants.GETIN_DATE));
@@ -54,7 +57,8 @@ public class RailwaySendOrderServlet extends HttpServlet {
                 databaseProperties.put(Constants.TO_STATATION, orderRequest.to_station);
                 databaseProperties.put(Constants.GETIN_DATE,GetInDateProxy.bookableStringToDate(orderRequest.getin_date));
                 databaseProperties.put(Constants.TRAIN_NO, orderRequest.train_no);
-                databaseProperties.put(Constants.ORDER_QTY, String.valueOf(orderRequest.order_qty));            
+                databaseProperties.put(Constants.ORDER_QTY, String.valueOf(orderRequest.order_qty));
+                databaseProperties.put(Constants.RECORD_USERNAME, username);
                 
                 final Key recordkey = DataStoreHelper.storeWithRetry(100, null, databaseProperties);
                 final String record_id = KeyFactory.keyToString(recordkey);
@@ -63,6 +67,7 @@ public class RailwaySendOrderServlet extends HttpServlet {
     
                 final TaskOptions orderTask = TaskOptions.Builder.withUrl("/order")
                         .method(Method.POST)
+                        .param(Constants.RECORD_USERNAME,username)
                         .param(Constants.RECORD_ID, record_id)
                         .param(Constants.PERSON_ID, orderRequest.person_id)
                         .param(Constants.FROM_STATATION, orderRequest.from_station)
@@ -70,7 +75,7 @@ public class RailwaySendOrderServlet extends HttpServlet {
                         .param(Constants.GETIN_DATE, GetInDateProxy.bookableStringToDate(orderRequest.getin_date))
                         .param(Constants.TRAIN_NO, orderRequest.train_no)
                         .param(Constants.ORDER_QTY, String.valueOf(orderRequest.order_qty))
-                        .retryOptions(RetryOptions.Builder.withTaskRetryLimit(0)); // No
+                        .retryOptions(RetryOptions.Builder.withTaskRetryLimit(RailwayOrderServlet.DEFAULT_ORDER_RETRY_LIMIT)); 
 
                 QueueFactory.getDefaultQueue().add(orderTask);
                 
