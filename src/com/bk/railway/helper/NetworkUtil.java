@@ -2,7 +2,9 @@ package com.bk.railway.helper;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLConnection;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.HashMap;
 import java.util.Map;
 
 public class NetworkUtil {
@@ -19,6 +21,26 @@ public class NetworkUtil {
         
         
         return dataSB.toString();
+    }
+    
+    public static Map<String,String> fromPostData(String postData) throws UnsupportedEncodingException {
+        final Map<String,String> formData = new HashMap<String,String>();
+        for(String token : postData.split("&")) {
+            final int eqpos = token.indexOf("=");
+            if(eqpos > 0) {
+                final String key = token.substring(0,eqpos);
+                final String value = URLDecoder.decode(token.substring(eqpos + 1), "utf8");
+                formData.put(key, value);
+            }
+            else if(0 == eqpos){
+                formData.put(token.substring(1), null);
+            }
+            else {
+                formData.put(token, null);
+            }
+        }
+        
+        return formData;
     }
     
     public static void putCookies(URLConnection conn,Map<String,String> cookies) {

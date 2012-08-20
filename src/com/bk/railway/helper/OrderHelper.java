@@ -21,7 +21,7 @@ import com.bk.railway.servlet.Constants;
 public class OrderHelper {
     public final static String ORDER_KEYWORD = new String("電腦代碼：");
     private final static Logger LOG = Logger.getLogger(OrderHelper.class.getName());
-    private final static String USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_4) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11";
+    
     private final static int CONRENT_HARDLIMIT = 10240;
     
     public static class OrderRequest {
@@ -97,7 +97,7 @@ public class OrderHelper {
             return null;
         }
         
-        final String answer = resolveRandom(cookies);
+        final String answer = TaskUtil.resolveRandom("http://railway.hinet.net",cookies, "http://railway.hinet.net/check_ctno1.jsp");
         LOG.info("answer=" + answer);
         
         if(null == answer || answer.length() != 5) {
@@ -133,7 +133,7 @@ public class OrderHelper {
         System.out.println("url=" + url);
         
         URLConnection conn = new URL(url).openConnection();
-        conn.addRequestProperty("User-Agent",USER_AGENT );
+        conn.addRequestProperty("User-Agent",TaskUtil.USER_AGENT );
         NetworkUtil.putCookies(conn,cookies);
         conn.addRequestProperty("Referer", "http://railway.hinet.net/check_ctno1.jsp");
         
@@ -170,62 +170,7 @@ public class OrderHelper {
     }
     
     
-    private String resolveRandom(Map<String,String> cookies) throws Exception {
-        String jsessionid = NetworkUtil.getJSESSIONID(cookies);
-        String url = "http://railway.hinet.net/ImageOut.jsp;jsessionid=" + jsessionid;
-        LOG.info("resolveRandom url=" + url);
-        
-        final URLConnection conn = new URL(url).openConnection();
-        
-        final URL hostCaptchaURL = new URL("http://ec2-46-137-229-229.ap-southeast-1.compute.amazonaws.com:8016/servlets/handle");
-        LOG.info("resolveRandom hostCaptchaURL=" + hostCaptchaURL);
-        
-        final URLConnection hostCaptchaConn = hostCaptchaURL.openConnection();
-        
-        try {
-            NetworkUtil.putCookies(conn,cookies);
-            conn.addRequestProperty("Referer", "http://railway.hinet.net/check_ctno1.jsp");
-            conn.addRequestProperty("User-Agent",USER_AGENT );
-            conn.setDoInput(true);
-            conn.connect();
-            
-            
-            hostCaptchaConn.setReadTimeout(60*1000); //60seconds
-            hostCaptchaConn.setDoInput(true);
-            hostCaptchaConn.setDoOutput(true);
-            
-            final InputStream is = conn.getInputStream();
-            final byte[] buffer = new byte[4096];
-            int nByteRead = 0;
-            
-            do {
-                nByteRead = is.read(buffer);
-                if(nByteRead > 0) {
-                    hostCaptchaConn.getOutputStream().write(buffer, 0, nByteRead);
-                }
-            }while(nByteRead > 0);
-            
-            hostCaptchaConn.getOutputStream().flush();
-            hostCaptchaConn.connect();
-            
-            final BufferedReader br = new BufferedReader(new InputStreamReader(hostCaptchaConn.getInputStream()));
-            
-            return br.readLine();
-            
-        }
-        finally {
-            if(conn != null) {
-                conn.getInputStream().close();
-            }
-            if(hostCaptchaConn != null) {
-                hostCaptchaConn.getInputStream().close();
-                hostCaptchaConn.getOutputStream().close();
-            }
-            
-        }
-      
-    }
-    
+
     private Map<String,String> getCookies(Map<String,String> formData,StringBuffer nextActionStringBuffer) throws Exception {
         final Map<String,String> cookies = new HashMap<String,String>();
         final Pattern actionPattern = Pattern.compile("action=\"(\\S+)\"");
@@ -236,7 +181,7 @@ public class OrderHelper {
         
         try {
         
-            conn.addRequestProperty("User-Agent",USER_AGENT );
+            conn.addRequestProperty("User-Agent",TaskUtil.USER_AGENT );
             conn.setDoInput(true);
             conn.setDoOutput(true);
             conn.addRequestProperty("Content-Type", "application/x-www-form-urlencoded");
@@ -249,7 +194,7 @@ public class OrderHelper {
             conn.connect();
     
             for(Map.Entry<String, List<String>> entry : conn.getHeaderFields().entrySet()) {
-                if("set-cookie".equals(entry.getKey().toLowerCase())) {
+                if(entry.getKey() != null && "set-cookie".equals(entry.getKey().toLowerCase())) {
                     for(String v : entry.getValue()) {
                         for(String token : v.split(";")) {
                             final int eqpos = token.indexOf("=");

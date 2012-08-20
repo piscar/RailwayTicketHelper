@@ -4,8 +4,11 @@
 <%@ page import="com.bk.railway.servlet.RecordStatus" %>
 <%@ page import="com.bk.railway.helper.GetInDateProxy" %>
 <%@ page import="com.bk.railway.helper.LoginHelper" %>
+<%@ page import="com.bk.railway.helper.TaskUtil" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.Arrays" %>
+<%@ page import="java.util.Calendar" %>
+<%@ page import="java.util.Date" %>
 
 <html>
   <head>
@@ -140,12 +143,17 @@ else {
 			<select name="getin_date">
 				
 <%
-final String[] dateStrings = GetInDateProxy.newInstance().getAllBookableDate();
-Arrays.sort(dateStrings,String.CASE_INSENSITIVE_ORDER);
+
+//final String[] dateStrings = GetInDateProxy.newInstance().getAllBookableDate();
+//Arrays.sort(dateStrings,String.CASE_INSENSITIVE_ORDER);
 //for(String dateString : dateStrings) {
+Calendar cal = Calendar.getInstance(TaskUtil.TIMEZONE);
+cal.add(Calendar.DAY_OF_MONTH, 1);
+final Date tomorrow = cal.getTime();
+
 for(int plusDay = 0;plusDay < 90;plusDay++) {
 %>
-			<option value=<%=GetInDateProxy.bookablePlusDay(dateStrings[0],plusDay)%>><%=GetInDateProxy.bookableAppendWeek(dateStrings[0],plusDay)%></option>
+			<option value=<%=GetInDateProxy.bookablePlusDay(tomorrow ,plusDay)%>><%=GetInDateProxy.bookableAppendWeek(tomorrow,plusDay)%></option>
 <%
 }
 %>				

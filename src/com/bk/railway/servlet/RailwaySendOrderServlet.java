@@ -36,10 +36,9 @@ public class RailwaySendOrderServlet extends HttpServlet {
         
         try {
             
-            final String bookableDateString = GetInDateProxy.newInstance().getBookableString(request.getParameter(Constants.GETIN_DATE));
             final boolean isBeforeToday = GetInDateProxy.isBeforeToday(request.getParameter(Constants.GETIN_DATE));
             
-            if(null == bookableDateString && isBeforeToday) {
+            if(isBeforeToday) {
                 throw new IllegalArgumentException("Unable to find date " + request.getParameter(Constants.GETIN_DATE));
             }
             else {
@@ -47,7 +46,7 @@ public class RailwaySendOrderServlet extends HttpServlet {
                         request.getParameter(Constants.PERSON_ID),
                         request.getParameter(Constants.FROM_STATATION),
                         request.getParameter(Constants.TO_STATATION),
-                        null == bookableDateString ? request.getParameter(Constants.GETIN_DATE) : bookableDateString ,
+                        request.getParameter(Constants.GETIN_DATE),
                         request.getParameter(Constants.TRAIN_NO),
                         Integer.parseInt(request.getParameter(Constants.ORDER_QTY)));
                 

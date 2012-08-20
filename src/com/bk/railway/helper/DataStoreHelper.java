@@ -17,7 +17,7 @@ import com.google.appengine.api.taskqueue.TaskOptions;
 
 public class DataStoreHelper {
     private final static Logger LOG = Logger.getLogger(DataStoreHelper.class.getName());
-    
+
     public static Key storeWithRetry(int maxRetry,Key recordKey,Map<String,String> properties) throws IOException {
         
         maxRetry = Math.min(100, Math.max(10, maxRetry)); //Make sure 10 < maxRetry < 100

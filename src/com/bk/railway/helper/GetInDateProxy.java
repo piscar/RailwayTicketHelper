@@ -1,3 +1,4 @@
+
 package com.bk.railway.helper;
 
 import java.io.BufferedReader;
@@ -22,144 +23,143 @@ public class GetInDateProxy {
     private final static SimpleDateFormat DATEFORMAT = new SimpleDateFormat("yyyy/MM/dd");
     private final static SimpleDateFormat WEB_DATEFORMAT = new SimpleDateFormat("yyyy/MM/dd EEE");
     private static GetInDateProxy m_self;
-    
+
     public synchronized static GetInDateProxy newInstance() {
-        if(null == m_self) {
+        if (null == m_self) {
             m_self = new GetInDateProxy();
         }
-        
+
         return m_self;
     }
-    
-    private Map<String,String> m_bookableList = new HashMap<String,String>();
+
+    private Map<String, String> m_bookableList = new HashMap<String, String>();
     private int m_updateYear;
     private int m_updateMonth;
     private int m_updateDay;
-    
-    public static String bookablePlusDay(String shortDateString,int plusDay) {
-        try {
-            Calendar cal  = Calendar.getInstance(TaskUtil.TIMEZONE);
-            cal.setTimeInMillis(DATEFORMAT.parse(shortDateString).getTime());
-            if(plusDay != 0) {
-                cal.add(Calendar.DAY_OF_MONTH, plusDay);
-            }
-            return DATEFORMAT.format(cal.getTime());
-        } catch (ParseException e) {
-            return shortDateString;
-        }        
-    }
-   
-    public static String bookableAppendWeek(String shortDateString,int plusDay) {
-        try {
-            Calendar cal  = Calendar.getInstance(TaskUtil.TIMEZONE);
-            cal.setTimeInMillis(DATEFORMAT.parse(shortDateString).getTime());
-            if(plusDay != 0) {
-                cal.add(Calendar.DAY_OF_MONTH, plusDay);
-            }
-            return WEB_DATEFORMAT.format(cal.getTime());
-        } catch (ParseException e) {
-            return shortDateString;
+
+    public static String bookablePlusDay(Date date, int plusDay) {
+
+        Calendar cal = Calendar.getInstance(TaskUtil.TIMEZONE);
+        cal.setTimeInMillis(date.getTime());
+        if (plusDay != 0) {
+            cal.add(Calendar.DAY_OF_MONTH, plusDay);
         }
+        return DATEFORMAT.format(cal.getTime());
     }
-    
+
+    public static String bookableAppendWeek(Date date, int plusDay) {
+
+        Calendar cal = Calendar.getInstance(TaskUtil.TIMEZONE);
+        cal.setTimeInMillis(date.getTime());
+        if (plusDay != 0) {
+            cal.add(Calendar.DAY_OF_MONTH, plusDay);
+        }
+        return WEB_DATEFORMAT.format(cal.getTime());
+
+    }
+
     public static String bookableStringToDate(String bookableString) {
-        if(bookableString.length() <= 10) {
+        if (bookableString.length() <= 10) {
             return bookableString;
         }
         else {
-            return bookableString.substring(0,10);
+            return bookableString.substring(0, 10);
         }
     }
-    
+
     public static boolean isBeforeToday(String bookableString) throws ParseException {
         final Date bookDate = DATEFORMAT.parse(bookableStringToDate(bookableString));
         final Calendar tomorrow = Calendar.getInstance(TaskUtil.TIMEZONE);
         final Calendar bookDay = Calendar.getInstance(TaskUtil.TIMEZONE);
-        
+
         tomorrow.add(Calendar.DAY_OF_MONTH, 1);
         tomorrow.set(Calendar.HOUR_OF_DAY, 0);
         tomorrow.set(Calendar.MINUTE, 0);
         tomorrow.set(Calendar.SECOND, 0);
         tomorrow.set(Calendar.MILLISECOND, 0);
-        
+
         bookDay.setTimeInMillis(bookDate.getTime());
-        
+
         return bookDay.before(tomorrow);
     }
-    
+
     public synchronized String getBookableString(Date bookDate) throws Exception {
 
-        getAllBookableDate(); //update bookable date
-        
+        getAllBookableDate(); // update bookable date
+
         return m_bookableList.get(DATEFORMAT.format(bookDate));
     }
-    
-    public synchronized String getBookableString(String bookDateString) throws Exception {
-        
-        DATEFORMAT.parse(bookDateString); //Make sure it is parseable
 
-        getAllBookableDate(); //update bookable date
-        
+    public synchronized String getBookableString(String bookDateString) throws Exception {
+
+        DATEFORMAT.parse(bookDateString); // Make sure it is parseable
+
+        getAllBookableDate(); // update bookable date
+
         return m_bookableList.get(bookableStringToDate(bookDateString));
     }
 
     public synchronized String[] getAllBookableDate() throws Exception {
-        
+
         final Calendar currentCalendar = Calendar.getInstance(TaskUtil.TIMEZONE);
 
         final int year = currentCalendar.get(Calendar.YEAR);
         final int month = currentCalendar.get(Calendar.MONTH);
         final int day = currentCalendar.get(Calendar.DAY_OF_MONTH);
-        
-        if(m_updateDay != day || m_updateMonth != month || m_updateYear != year) {
-            m_updateDay = day;
-            m_updateMonth = month;
-            m_updateYear = year;
-            
-            m_bookableList.clear();
-            
-            for(String dateString : findAllowBookedDate()) {
-                m_bookableList.put(dateString.substring(0,10), dateString);
+
+        if (m_updateDay != day || m_updateMonth != month || m_updateYear != year) {
+            final String[] bookableDates = findAllowBookedDate();
+            if (bookableDates != null && bookableDates.length > 0) {
+                m_updateDay = day;
+                m_updateMonth = month;
+                m_updateYear = year;
+
+                m_bookableList.clear();
+
+                for (String dateString : bookableDates) {
+                    m_bookableList.put(dateString.substring(0, 10), dateString);
+                }
+                LOG.info("New bookable date m_bookableList=" + m_bookableList + " on "
+                        + m_updateYear + "/" + (m_updateMonth + 1) + "/" + m_updateDay);
             }
-            LOG.info("New bookable date m_bookableList=" + m_bookableList + " on " + m_updateYear + "/" + (m_updateMonth + 1) + "/" + m_updateDay);
+            else {
+                return new String[] {};
+            }
         }
 
         return m_bookableList.keySet().toArray(new String[0]);
-        
+
     }
-    
+
     protected GetInDateProxy() {
-        
+
     }
-    
-    
-    
-    
-    private String[] findAllowBookedDate() throws Exception{
-        final Pattern pattern = Pattern.compile("(\\d{4}/\\d{2}/\\d{2}-\\d{2})>\\d{4}/\\d{2}/\\d{2}");
+
+    private String[] findAllowBookedDate() throws Exception {
+        final Pattern pattern = Pattern
+                .compile("(\\d{4}/\\d{2}/\\d{2}-\\d{2})>\\d{4}/\\d{2}/\\d{2}");
         List<String> retStrings = new ArrayList<String>(14);
-        
-        
+
         URLConnection conn = new URL("http://railway.hinet.net/ctno1.htm").openConnection();
         conn.setDoOutput(true);
         conn.connect();
-        
-        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(),"UTF8"));
+
+        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF8"));
         String line = null;
-        
+
         do {
-            
+
             line = br.readLine();
-            if(line != null) {
+            if (line != null) {
                 Matcher matcher = pattern.matcher(line);
-                if(matcher.find()) {
+                if (matcher.find()) {
                     retStrings.add(matcher.group(1));
                 }
             }
-        }while(line != null);
-        
+        } while (line != null);
+
         conn.getInputStream().close();
-        
+
         return retStrings.toArray(new String[0]);
     }
 }
