@@ -40,7 +40,7 @@ public class QueryHelper {
             formData.put("from_station", from_station);
             formData.put("to_station", to_station);
             formData.put("getin_date", getin_date);
-            formData.put("train_type", "*1");
+            formData.put("train_type", "*4");
             formData.put("getin_start_dtime", "05:00");
             formData.put("getin_end_dtime", "23:59");
             formData.put("order_qty_str", String.valueOf(order_qty));
@@ -133,7 +133,7 @@ public class QueryHelper {
                 int startpos = line.indexOf(QUERY_KEYWORD);
                 if(startpos > 0) {
                     do {
-                        if(startpos + QUERY_KEYWORD.length() < line.length()) {
+                        if(startpos > 0 && startpos + QUERY_KEYWORD.length() < line.length()) {
                             line = line.substring(startpos + QUERY_KEYWORD.length());
                         }
                         else {
@@ -229,7 +229,7 @@ public class QueryHelper {
                 //System.out.println(entry.getKey()+"=");
                 for(String v : entry.getValue()) {
                     LOG.log(Level.INFO, "\t" + v);
-                    System.out.println("\t" + v);
+                    //System.out.println("\t" + v);
                 }
             }
            

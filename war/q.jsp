@@ -1,6 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="com.bk.railway.servlet.Constants" %>
-<%@ page import="com.bk.railway.servlet.RailwayOrderStatusServlet" %>
+<%@ page import="com.bk.railway.servlet.RailwayQueryServlet" %>
 <%@ page import="com.bk.railway.servlet.RecordStatus" %>
 <%@ page import="com.bk.railway.helper.GetInDateProxy" %>
 <%@ page import="com.bk.railway.helper.LoginHelper" %>
@@ -28,64 +28,83 @@ stationid_to_name["<%=entry.getKey()%>"]="<%=entry.getValue()%>";
 }
 %>
 
-function createLink(status,record_id){
-	
-	if(status != "<%=RecordStatus.CANCELED.toString()%>") {
-		return "<form action=\"/cancel\" + method=\"post\" name=\"form_cancel_" + record_id + "\"><input type=\"hidden\" name=\"<%=Constants.RECORD_ID%>\" value=\"" + record_id  +"\"><a href=\"javascript: return false\" onclick=\"javascript:document.form_cancel_" + record_id + ".submit();\">Cancel</a></form>";
-	}
-	else {
-		return "";
-	}
-}
+function createUpdateTime(eta){
 
-function createEta(entity){
-	var status = entity.<%=Constants.RECORD_STATUS%>;
-	if("<%=RecordStatus.POSTPONED.toString()%>" == status || "<%=RecordStatus.QUEUE.toString()%>" == status || "<%=RecordStatus.DONE.toString()%>" == status) {
-		var eta = parseInt(entity.<%=Constants.ORDER_TASKETA%>);
 		if(isNaN(eta)) {
 				return "";
 		}
 		else {
 				var currentDate = new Date();
 		    var etaDay = new Date(eta + currentDate.getTimezoneOffset() * 60000 + 3600000 * 8);
-		    return "&nbsp;next try @ &nbsp;" + etaDay.toLocaleString();
+		    return etaDay.toLocaleString();
 	  }
-	}
-	else {
-		return "";
-	}
+
 }
 	
+	
+function loadStatus(jsonstring) {
 
-function loadStatus() {
-	$.post("/status", function(data) {
-		var json = jQuery.parseJSON(data);
-		var entities = json.<%=RailwayOrderStatusServlet.ENTITY%>;
-		for(var i = 0;i < entities.length;i++) {
-			$('#statustable tr:last').after("<tr><td>" + entities[i].<%=Constants.PERSON_ID%> + "</td><td>" + stationid_to_name[entities[i].<%=Constants.FROM_STATATION%>] + "</td><td>" + stationid_to_name[entities[i].<%=Constants.TO_STATATION%>] + "</td><td>" + entities[i].<%=Constants.GETIN_DATE%> + "</td><td>" + entities[i].<%=Constants.TRAIN_NO%> + "</td><td>" + entities[i].<%=Constants.ORDER_QTY%>  + "</td><td>" + entities[i].<%=Constants.ORDER_NO%> + "</td><td>" + entities[i].<%=Constants.RECORD_STATUS%> + createEta(entities[i]) + "</td><td>" + createLink(entities[i].<%=Constants.RECORD_STATUS%>,entities[i].<%=Constants.RECORD_ID%>) + "</td></tr>");
+		var json = jQuery.parseJSON(jsonstring);
+		var routes = json.length;
+		for(var r = 0;r < json.length;r++) {
+			var updtaeTime = json[r][0].<%=Constants.QUERY_UPDATETIME%>;
+			var from_to_string = "";
+			var train_no = json[r][0].<%=Constants.TRAIN_NO%>;
+		  
+		  for(var stop = 0;stop < json[r].length;stop++) {
+				from_to_string = from_to_string + "&nbsp;" + stationid_to_name[json[r][stop].<%=Constants.FROM_STATATION%>];
+				if(updtaeTime < json[r][stop].<%=Constants.QUERY_UPDATETIME%>) {
+					updtaeTime = json[r][stop].<%=Constants.QUERY_UPDATETIME%>;
+				}
+			}
+			
+			from_to_string = from_to_string + "&nbsp;" + stationid_to_name[json[r][json[r].length - 1].<%=Constants.TO_STATATION%>];
+			$('#qtable tr:last').after("<tr><td>" + json[r][0].<%=Constants.PERSON_ID%> + "</td><td>" + from_to_string + "</td><td>" + json[r][0].<%=RailwayQueryServlet.BORDING_TIME%> + "</td><td>" + json[r][0].<%=Constants.TRAIN_NO%> + "</td><td>" + json[r][0].<%=Constants.ORDER_QTY%> + "</td><td>" + createUpdateTime(updtaeTime) + "</td><td><a href='javascript:submitQuery();'>Query</a></td></tr>");
 		}
+
 		//alert("json.person_id=" + json.person_id);
   	//$("#result").html(entities);
   	//
-	});
+
 	
 }
 
-function submitRequest(){
+function submitQuery() {
 	var formdata = "<%=Constants.PERSON_ID%>=" + ctno1.elements["<%=Constants.PERSON_ID%>"].value;
 	formdata = formdata + "&" + "<%=Constants.FROM_STATATION%>=" + ctno1.elements["<%=Constants.FROM_STATATION%>"].value;
 	formdata = formdata + "&" + "<%=Constants.TO_STATATION%>=" + ctno1.elements["<%=Constants.TO_STATATION%>"].value;
 	formdata = formdata + "&" + "<%=Constants.GETIN_DATE%>=" + ctno1.elements["<%=Constants.GETIN_DATE%>"].value;
-	formdata = formdata + "&" + "<%=Constants.TRAIN_NO%>=" + ctno1.elements["<%=Constants.TRAIN_NO%>"].value;
 	formdata = formdata + "&" + "<%=Constants.ORDER_QTY%>=" + ctno1.elements["<%=Constants.ORDER_QTY%>"].value;
+	formdata = formdata + "&" + "<%=RailwayQueryServlet.NUM_STOP%>=1";
 	
+	$.ajax({  
+  type: "POST",
+  url: "/query",
+  data: formdata,  
+  success: function(data) { 
+				loadStatus(data);
+       }  
+  });  
+  
+  return false;
+	
+}
+
+
+function submitPQuery(){
+	var formdata = "<%=Constants.PERSON_ID%>=" + ctno1.elements["<%=Constants.PERSON_ID%>"].value;
+	formdata = formdata + "&" + "<%=Constants.FROM_STATATION%>=" + ctno1.elements["<%=Constants.FROM_STATATION%>"].value;
+	formdata = formdata + "&" + "<%=Constants.TO_STATATION%>=" + ctno1.elements["<%=Constants.TO_STATATION%>"].value;
+	formdata = formdata + "&" + "<%=Constants.GETIN_DATE%>=" + ctno1.elements["<%=Constants.GETIN_DATE%>"].value;
+	formdata = formdata + "&" + "<%=Constants.ORDER_QTY%>=" + ctno1.elements["<%=Constants.ORDER_QTY%>"].value;
+  //var formdata = $("#ctno1").serialize();
 
 	$.ajax({  
-  type: "POST",  
-  url: "/send",  
+  type: "POST",
+  url: "/pquery",
   data: formdata,  
-  success: function() {  
-				loadStatus();
+  success: function(data) { 
+				loadStatus(data);
        }  
   });  
   
@@ -97,13 +116,13 @@ function submitRequest(){
     
   </head>
 
-  <body onLoad="loadStatus()">
+  <body>
     <h1>Railway Helper</h1>
     <div id="result">
     	You are <%=LoginHelper.getUsername(request,response)%>	
     </div>
-    <table id="statustable">
-			<tr><td>Person Id</td><td>From</td><td>To</td><td>Date</td><td>Train No</td><td>Quantity</td><td>Order No</td><td>Status</td><td>Links</td></tr>
+    <table id="qtable">
+			<tr><td>Person Id</td><td>Stations</td><td>Date</td><td>Train No</td><td>Quantity</td><td>Update Time</td><td>Link</td></tr>
     </table>
     
 <form method="POST" name="ctno1">
@@ -182,13 +201,15 @@ for(int plusDay = 0;plusDay < 90;plusDay++) {
 			</select>
 		</td>
 	</tr>
+<!--	
 	<tr>
 		<td class="green01">Train No</td>
 		<td>
-			<input type="text" name="<%=Constants.TRAIN_NO%>">
+			<input type="text" name="train_no">
 			 <span id="boxDesc" style="display:none;"></span>
 		</td>
 	</tr>
+-->	
 	<tr>
 		<td class="green01">Quantity</td>
 		<td>
@@ -217,9 +238,9 @@ for(int plusDay = 0;plusDay < 90;plusDay++) {
 		<td>&nbsp;</td>
 		<td>
 			<!--<button type="submit" style="border:0;background:white;width:100px;">-->
-			<a href="javascript:submitRequest();"><img src="oder_a.jpg"></a>
-			<!--<input type="image" src="oder_a.jpg" onClick="javascript:submitRequest();">-->
-			<!--a href="javascript:return false;" onclick="javascript:document.ctno1.submit();document.ctno1.person_id=''"><img src="oder_a.jpg"></a-->
+			<a href="javascript:submitPQuery();"><img src="cheak_b.jpeg"></a>
+			<a href='javascript:submitQuery();'>Query</a>
+			<!--<input type="image" src="cheak_b.jpeg" onClick="">-->
 			<!--</button>-->
 		</td>
 	</tr>

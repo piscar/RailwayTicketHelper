@@ -1,4 +1,19 @@
-<!-- Indices written at Mon, 20 Aug 2012 19:23:21 CST -->
+<!-- Indices written at Fri, 24 Aug 2012 11:40:20 CST -->
 
-<datastore-indexes/>
+<datastore-indexes>
 
+    <!-- Used 1 time in query history -->
+    <datastore-index kind="query" ancestor="false" source="auto">
+        <property name="from_station" direction="asc"/>
+        <property name="getin_date" direction="asc"/>
+        <property name="order_qty_str" direction="asc"/>
+    </datastore-index>
+
+    <!-- Used 1 time in query history -->
+    <datastore-index kind="query" ancestor="false" source="auto">
+        <property name="getin_date" direction="asc"/>
+        <property name="to_station" direction="asc"/>
+        <property name="order_qty_str" direction="asc"/>
+    </datastore-index>
+
+</datastore-indexes>

@@ -106,10 +106,10 @@ public class RailwayQueryServlet extends HttpServlet {
                                 queryKeyString);
 
                         queryTask.etaMillis(TaskUtil.getTomorrowEtaInMill());
-                        queryTask
-                                .taskName(getTaskName(queryRequest.from_station,
+                        queryTask.taskName(getTaskName(queryRequest.from_station,
                                         queryRequest.to_station,
-                                        request.getParameter(Constants.GETIN_DATE)));
+                                        request.getParameter(Constants.GETIN_DATE),
+                                        numstop));
                         QueueFactory.getDefaultQueue().add(queryTask);
 
                     } catch (TaskAlreadyExistsException e) {
@@ -125,18 +125,29 @@ public class RailwayQueryServlet extends HttpServlet {
                             .get(request.getParameter(Constants.FROM_STATATION));
                     final int to_station_index = Constants.MAJOR_STOP_STATION_TO_ARRAY_INDEX
                             .get(request.getParameter(Constants.TO_STATATION));
-                    final int direction = to_station_index > to_station_index ? 1 : -1;
-
+                    final int direction = to_station_index > form_station_index ? 1 : -1;
+                    
+                    LOG.info("form_station_index=" + form_station_index + " to_station_index=" + to_station_index + " direction=" + direction);
+                    
                     int station_index = form_station_index + direction;
                     while (station_index != to_station_index
                             && station_index < Constants.MAJOR_STOP_STATION_ARRAY.length) {
+                        
+                        
+                        final TaskOptions directqueryTask = createTask(
+                                queryRequest.person_id,
+                                queryRequest.from_station,
+                                queryRequest.to_station,
+                                GetInDateProxy.bookableStringToDate(request.getParameter(Constants.GETIN_DATE)),
+                                queryRequest.order_qty,
+                                numstop - 1,
+                                queryKeyString);     
 
                         final TaskOptions seq1queryTask = createTask(
                                 queryRequest.person_id,
                                 queryRequest.from_station,
                                 Constants.MAJOR_STOP_STATION_ARRAY[station_index],
-                                GetInDateProxy.bookableStringToDate(request
-                                        .getParameter(Constants.GETIN_DATE)),
+                                GetInDateProxy.bookableStringToDate(request.getParameter(Constants.GETIN_DATE)),
                                 queryRequest.order_qty,
                                 numstop - 1,
                                 queryKeyString);
@@ -145,14 +156,20 @@ public class RailwayQueryServlet extends HttpServlet {
                                 queryRequest.person_id,
                                 Constants.MAJOR_STOP_STATION_ARRAY[station_index],
                                 queryRequest.to_station,
-                                GetInDateProxy.bookableStringToDate(request
-                                        .getParameter(Constants.GETIN_DATE)),
+                                GetInDateProxy.bookableStringToDate(request.getParameter(Constants.GETIN_DATE)),
                                 queryRequest.order_qty,
                                 numstop - 1,
                                 queryKeyString);
-
+                   
+                        LOG.info("directqueryTask=" + directqueryTask);
                         LOG.info("seq1queryTask=" + seq1queryTask);
                         LOG.info("seq2queryTask=" + seq2queryTask);
+
+                        try {
+                            QueueFactory.getDefaultQueue().add(directqueryTask);
+                        } catch (TaskAlreadyExistsException e) {
+                            LOG.info("duplictaed task name " + DebugMessage.toString(e));
+                        }
 
                         try {
                             QueueFactory.getDefaultQueue().add(seq1queryTask);
@@ -165,6 +182,7 @@ public class RailwayQueryServlet extends HttpServlet {
                         } catch (TaskAlreadyExistsException e) {
                             LOG.info("duplictaed task name " + DebugMessage.toString(e));
                         }
+
 
                         station_index += direction;
                     }
@@ -267,7 +285,7 @@ public class RailwayQueryServlet extends HttpServlet {
                 .param(Constants.GETIN_DATE, getindate)
                 .param(Constants.ORDER_QTY, String.valueOf(quantity))
                 .param(NUM_STOP, String.valueOf(numStop))
-                .taskName(getTaskName(from_station, to_station, getindate));
+                .taskName(getTaskName(from_station, to_station, getindate,numStop));
 
         if (queryKeyString != null && !"".equals(queryKeyString)) {
             queryTask.param(Constants.QUERY_ID, queryKeyString);
@@ -276,9 +294,9 @@ public class RailwayQueryServlet extends HttpServlet {
         return queryTask;
     }
 
-    private String getTaskName(String from_station, String to_station, String getindate) {
-        return RailwayQueryServlet.class.getSimpleName() + "-" + from_station + "-" + to_station
-                + "-" + getindate.replaceAll("/", "-");
+    private String getTaskName(String from_station, String to_station, String getindate,int numstop) {
+        return RailwayQueryServlet.class.getSimpleName() + "-" + from_station + "-" + to_station + "-" + numstop 
+                + "-" + getindate.replaceAll("/", "-") + "-" + String.valueOf(System.currentTimeMillis());
     }
 
 }
